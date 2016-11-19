@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #
 # Copyright (c) 2016, Chris Stillson <stillson@gmail.com>
 # All rights reserved.
@@ -25,8 +27,8 @@
 #
 
 
-import _pycapsicum
 import os
+import _pycapsicum
 
 class CapsicumError(Exception):
     pass
@@ -145,12 +147,12 @@ def cap_list_fix(caplist):
     capset = set(caplist)
 
     if 'CAP_RECV' in capset:
-        capset = capset - {'CAP_RECV'}
-        capset = capset.union({'CAP_READ'})
+        capset.remove('CAP_RECV')
+        capset.add('CAP_READ')
 
     if 'CAP_SEND' in capset:
-        capset = capset - {'CAP_SEND'}
-        capset = capset.union({'CAP_WRITE'})
+        capset.remove('CAP_SEND')
+        capset.add('CAP_WRITE')
 
     fixlist = [
     ['CAP_SEEK_TELL',    {'CAP_SEEK'}],
@@ -183,7 +185,7 @@ def cap_list_fix(caplist):
 
     for cap, r_set in fixlist:
         if cap in capset:
-            capset = capset - r_set
+            capset.remove(r_set)
 
     return list(capset)
 
@@ -415,14 +417,10 @@ OPEN_FLAGS = \
 }
 
 def _fd_check(fd):
-    if isinstance(fd, int):
-        return fd
-    return fd.fileno()
+    return fd if isinstance(fd, int) else fd.fileno()
 
 def _rw_flags(flag):
-    if isinstance(flag, int):
-        return flag
-    return(OPEN_FLAGS[flag])
+    return flag if isinstance(flag, int) else OPEN_FLAGS[flag]
 
 def enter():
     if _pycapsicum.enter() != 0:
@@ -468,7 +466,7 @@ class CapRights(object):
     @property
     def caps(self):
         rval = []
-        for a_name,a_cap in NAME_2_CAPS.items():
+        for a_name, a_cap in NAME_2_CAPS.items():
             if self.is_set([a_name]):
                 rval.append(a_name)
 
@@ -495,10 +493,8 @@ class CapRights(object):
         raw_cap = self._get_raw_caps(caplist)
         for a_cap in raw_cap:
             rv = self.cr.is_set(a_cap)
-            if rv == 0:
-                return False
-            if rv == 1:
-                return True
+            if rv in (0, 1):
+                return rv == 1
             raise CapsicumError
 
     def merge(self, otherCR):
@@ -508,9 +504,7 @@ class CapRights(object):
         self.cr.remove(otherCR.cr)
 
     def contains(self, otherCR):
-        if self.cr.contains(otherCR.cr) == 1:
-            return True
-        return False
+        return self.cr.contains(otherCR.cr) == 1
 
     def limit(self, fd):
         if self.cr.limit(_fd_check(fd)) != 0:
